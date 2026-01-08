@@ -1,0 +1,5 @@
+{
+  "name": "AI Stock Tech Analyst first one",
+  "description": "A professional technical analysis tool powered by Gemini. It analyzes stock trends using indicators like MACD, RSI, KDJ, and Magic 9 to provide trading scores and buy/sell recommendations.",
+  "requestFramePermissions": []
+}
