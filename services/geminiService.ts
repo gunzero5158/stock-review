@@ -15,7 +15,7 @@ const ANALYSIS_SCHEMA = {
     support: { type: Type.STRING, description: "Identified support price levels" },
     resistance: { type: Type.STRING, description: "Identified resistance price levels" },
     recommendation: { type: Type.STRING, description: "Short term actionable advice" },
-    detailedAnalysis: { type: Type.STRING, description: "Deep analysis including Elliott Wave, Chan Theory, Bollinger, Magic 9, RSI and KDJ." },
+    detailedAnalysis: { type: Type.STRING, description: "Deep analysis including Patterns, Fibonacci, Elliott Wave, Chan Theory, Bollinger, Magic 9, RSI and KDJ." },
     indicators: {
       type: Type.ARRAY,
       items: {
@@ -106,31 +106,41 @@ export const analyzeStock = async (
        - **RSI**: Is it Overbought (>70) or Oversold (<30)? Is there Divergence?
        - **KDJ**: Check for Golden Cross (Buy) or Dead Cross (Sell).
 
-    2. **Advanced Analysis Frameworks**:
-       - **Bollinger Bands**: Is the price hugging the Upper Band?
-       - **Magic 9 (DeMark)**: Check for Reversal signals (9).
-       - **Elliott Wave**: Identify wave structure.
-       - **Chan Theory (缠论)**: Identify structure.
+    2. **Chart Patterns & Morphology**:
+       - Analyze the sequence of Highs and Lows in the provided daily/weekly data.
+       - **Identify Classic Patterns**: Look for specific setups like "Cup and Handle", "Head and Shoulders" (Top/Bottom), "Double Top/Bottom", "Bullish/Bearish Flags", or "Wedges".
+       - **Trend Structure**: Higher Highs/Higher Lows (Up) or Lower Highs/Lower Lows (Down).
 
-    3. **SCORING LOGIC (CRITICAL)**:
+    3. **Key Levels & Fibonacci Analysis**:
+       - Calculate implied **Fibonacci Retracement** levels based on the recent significant High/Low range from the data.
+       - Identify if current price is near a Golden Ratio level (0.618 or 0.382) acting as support or resistance.
+       - Combine these with integer support/resistance levels.
+
+    4. **Advanced Analysis Frameworks**:
+       - **Bollinger Bands**: Is the price hugging the Upper Band (Breakout) or reverting to Mean?
+       - **Magic 9 (DeMark)**: Check for Reversal signals (9).
+       - **Elliott Wave**: Identify wave structure (Impulse vs Correction).
+       - **Chan Theory (缠论)**: Identify structural fractals if applicable.
+
+    5. **SCORING LOGIC (CRITICAL)**:
        - The 'score' (0.0 to 5.0) represents the **Risk/Reward Ratio for a NEW BUY ENTRY**, NOT just the trend direction.
-       - **Score 4.5 - 5.0**: Strong Signal. Bottom fishing opportunity or Strong Breakout with volume. Low Risk.
+       - **Score 4.5 - 5.0**: Strong Signal. Pattern Breakout (e.g., Cup & Handle breakout) or Deep Support Bounce (Fib 0.618). Low Risk.
        - **Score 2.5 - 3.5**: Neutral / Hold. Trend might be UP, but price is too high (Overbought), or Trend is Sideways. **Wait for pullback.**
-       - **Score 0.0 - 2.0**: Sell / Avoid. Trend is Broken, or price is hitting major resistance with Divergence.
+       - **Score 0.0 - 2.0**: Sell / Avoid. Pattern Breakdown (e.g., Head & Shoulders neckline break) or Bearish Divergence.
        - **Example**: If Trend is UP but RSI > 80 (Overbought) and you recommend "Don't chase high" or "Take Profit", the Score MUST be **< 3.0** (Neutral/Sell), NEVER 5.0.
 
-    4. **Determine**:
+    6. **Determine**:
        - A technical score (based on logic above).
-       - **Key Support and Resistance levels**.
+       - **Key Support and Resistance levels** (Label them, e.g., "Support at $100 (Fib 0.5)").
        - A clear, actionable recommendation (e.g., "Wait for pullback to...", "Buy at market", "Reduce position").
     
-    5. **Formatting & Language Rules**:
+    7. **Formatting & Language Rules**:
        - **CRITICAL**: The output fields 'detailedAnalysis', 'recommendation', 'support', 'resistance', and **especially** the 'description' field inside the indicators array MUST be in **${targetLang}**.
        - If ${targetLang} is Chinese, use Simplified Chinese for all descriptions.
        - 'trend' and 'signal' fields MUST remain in ENGLISH enum format (e.g., "BULLISH", "BEARISH").
-       - **detailedAnalysis**: Must integrate insights from RSI, KDJ, Bollinger, and Elliott Wave.
+       - **detailedAnalysis**: Must integrate insights from Patterns, Fibonacci, RSI, KDJ, and Wave theory.
 
-    6. Return the result strictly in JSON.
+    8. Return the result strictly in JSON.
   `;
 
   // Retry Logic for Stability
