@@ -15,7 +15,7 @@ const ANALYSIS_SCHEMA = {
     support: { type: Type.STRING, description: "Identified support price levels" },
     resistance: { type: Type.STRING, description: "Identified resistance price levels" },
     recommendation: { type: Type.STRING, description: "Short term actionable advice" },
-    detailedAnalysis: { type: Type.STRING, description: "Deep analysis including Patterns, Fibonacci, Elliott Wave, Chan Theory, Bollinger, Magic 9, RSI and KDJ." },
+    detailedAnalysis: { type: Type.STRING, description: "Professional technical analysis report (MAXIMUM 600 words). Organized into multiple paragraphs. Separate paragraphs with a SINGLE newline only. No headings." },
     indicators: {
       type: Type.ARRAY,
       items: {
@@ -23,7 +23,7 @@ const ANALYSIS_SCHEMA = {
         properties: {
           name: { type: Type.STRING },
           signal: { type: Type.STRING, enum: ["BULLISH", "BEARISH", "NEUTRAL"] },
-          value: { type: Type.STRING, description: "The numeric value or state" },
+          value: { type: Type.STRING, description: "VERY SHORT numeric value or state (max 20 chars). E.g. 'RSI: 72', 'Golden Cross'. Do NOT include long text." },
           description: { type: Type.STRING }
         }
       }
@@ -62,9 +62,10 @@ export const analyzeStock = async (
   
   let promptContext = "";
   if (contextData && contextData.length > 0) {
-    // Header: Date, Open, High, Low, Close, Vol, MACD_Hist, RSI, K, Boll_Up, Boll_Low, Magic9
+    // Header: Date,Open,High,Low,Close,Vol,MA5,MA20,DIF,DEA,Hist,RSI,K,Boll_Up,Boll_Low,Magic9
+    // We strictly format numbers to save token space and ensure clarity
     const dailyCSV = contextData.slice(-30).map(d => 
-      `${d.date},${d.open},${d.high},${d.low},${d.close},${d.volume},${d.hist?.toFixed(3)},${d.rsi?.toFixed(1)},${d.k?.toFixed(1)},${d.bollUpper?.toFixed(2)},${d.bollLower?.toFixed(2)},${d.magic9}`
+      `${d.date},${d.open},${d.high},${d.low},${d.close},${d.volume},${d.ma5?.toFixed(2)||''},${d.ma20?.toFixed(2)||''},${d.macd?.toFixed(3)||''},${d.signal?.toFixed(3)||''},${d.hist?.toFixed(3)||''},${d.rsi?.toFixed(1)},${d.k?.toFixed(1)},${d.bollUpper?.toFixed(2)},${d.bollLower?.toFixed(2)},${d.magic9||0}`
     ).join("\n");
     
     // Header: Date, Open, High, Low, Close
@@ -86,7 +87,7 @@ export const analyzeStock = async (
       Latest Volume Ratio: ${volumeRatio}x (vs 5-day avg)
       
       === DAILY DATA (Last 30 Days) ===
-      Format: Date,Open,High,Low,Close,Vol,MACD_Hist,RSI,K,Boll_Up,Boll_Low,Magic9
+      Format: Date,Open,High,Low,Close,Vol,MA5,MA20,MACD_DIF,MACD_DEA,MACD_Hist,RSI,K,Boll_Up,Boll_Low,Magic9
       ${dailyCSV}
 
       === WEEKLY CHART (Last 12 Weeks) ===
@@ -97,50 +98,56 @@ export const analyzeStock = async (
   }
 
   const prompt = `
-    Act as a Senior Technical Analyst specialized in Asian and US markets. Perform a DEEP analysis for: "${query}".
+    Act as a Senior Technical Analyst specialized in Asian and US markets. Perform a CONCISE analysis for: "${query}".
     ${promptContext}
 
     **Strictly DO NOT** search for news. Rely ONLY on the provided price/indicator data.
 
-    1. **Primary Oscillators (Mandatory)**:
-       - **RSI**: Is it Overbought (>70) or Oversold (<30)? Is there Divergence?
-       - **KDJ**: Check for Golden Cross (Buy) or Dead Cross (Sell).
+    1. **Trend & Structure**:
+       - **Moving Averages**: Analyze Price vs MA5 vs MA20. Identify Bullish Alignment (Long) or Death Cross (Short).
+       - **Timeframe Continuity**: Does the Weekly Chart support the Daily trend?
 
-    2. **Chart Patterns & Morphology**:
-       - Analyze the sequence of Highs and Lows in the provided daily/weekly data.
-       - **Identify Classic Patterns**: Look for specific setups like "Cup and Handle", "Head and Shoulders" (Top/Bottom), "Double Top/Bottom", "Bullish/Bearish Flags", or "Wedges".
-       - **Trend Structure**: Higher Highs/Higher Lows (Up) or Lower Highs/Lower Lows (Down).
+    2. **Divergence Analysis (CRITICAL)**:
+       - **Concept**: Compare Price Highs/Lows vs Indicator Highs/Lows.
+       - **RSI & KDJ Divergence**: Check standard divergence logic. This is the STRONGEST signal.
 
-    3. **Key Levels & Fibonacci Analysis**:
-       - Calculate implied **Fibonacci Retracement** levels based on the recent significant High/Low range from the data.
-       - Identify if current price is near a Golden Ratio level (0.618 or 0.382) acting as support or resistance.
-       - Combine these with integer support/resistance levels.
+    3. **Primary Oscillators**:
+       - **MACD (KEEP CONCISE)**: Check Zero Line status and recent Crossovers. **Do not explain how MACD works**. Just state the signal (e.g. "DIF crossed above DEA"). Keep this part brief (max 2 sentences).
+       - **RSI**: Overbought (>70) or Oversold (<30)?
+       - **KDJ**: Golden Cross (Buy) or Dead Cross (Sell).
 
-    4. **Advanced Analysis Frameworks**:
-       - **Bollinger Bands**: Is the price hugging the Upper Band (Breakout) or reverting to Mean?
-       - **Magic 9 (DeMark)**: Check for Reversal signals (9).
-       - **Elliott Wave**: Identify wave structure (Impulse vs Correction).
-       - **Chan Theory (缠论)**: Identify structural fractals if applicable.
+    4. **Chart Patterns & Morphology**:
+       - **Identify Classic Patterns**: Cup and Handle, Head and Shoulders, Double Top/Bottom, Triangles, Flags.
+       - **Candlestick Math**: Look for long wicks (rejection) or large body candles (conviction) at key levels.
 
-    5. **SCORING LOGIC (CRITICAL)**:
-       - The 'score' (0.0 to 5.0) represents the **Risk/Reward Ratio for a NEW BUY ENTRY**, NOT just the trend direction.
-       - **Score 4.5 - 5.0**: Strong Signal. Pattern Breakout (e.g., Cup & Handle breakout) or Deep Support Bounce (Fib 0.618). Low Risk.
-       - **Score 2.5 - 3.5**: Neutral / Hold. Trend might be UP, but price is too high (Overbought), or Trend is Sideways. **Wait for pullback.**
-       - **Score 0.0 - 2.0**: Sell / Avoid. Pattern Breakdown (e.g., Head & Shoulders neckline break) or Bearish Divergence.
-       - **Example**: If Trend is UP but RSI > 80 (Overbought) and you recommend "Don't chase high" or "Take Profit", the Score MUST be **< 3.0** (Neutral/Sell), NEVER 5.0.
+    5. **Key Levels**:
+       - **Fibonacci**: Calculate retracement levels (0.382, 0.5, 0.618) from recent swing high/low.
+       - **Bollinger Bands**: Price tagging Upper Band (Strength/Overextended) or Lower Band (Bounce).
+       - **Magic 9**: Check for sequential 9 signals.
 
-    6. **Determine**:
-       - A technical score (based on logic above).
-       - **Key Support and Resistance levels** (Label them, e.g., "Support at $100 (Fib 0.5)").
-       - A clear, actionable recommendation (e.g., "Wait for pullback to...", "Buy at market", "Reduce position").
-    
-    7. **Formatting & Language Rules**:
-       - **CRITICAL**: The output fields 'detailedAnalysis', 'recommendation', 'support', 'resistance', and **especially** the 'description' field inside the indicators array MUST be in **${targetLang}**.
-       - If ${targetLang} is Chinese, use Simplified Chinese for all descriptions.
-       - 'trend' and 'signal' fields MUST remain in ENGLISH enum format (e.g., "BULLISH", "BEARISH").
-       - **detailedAnalysis**: Must integrate insights from Patterns, Fibonacci, RSI, KDJ, and Wave theory.
+    6. **SCORING LOGIC**:
+       - Score 0-5 based on **Risk/Reward for NEW ENTRY**.
+       - **Score 5**: Trend Up + Bullish Divergence + Breakout.
+       - **Score 0**: Trend Down + Bearish Divergence + Breakdown.
+       - **Score 2-3**: High RSI (>80) + Divergence (Risk of pullback).
 
-    8. Return the result strictly in JSON.
+    7. **Determine**:
+       - Technical Score.
+       - Support/Resistance Levels (with reasoning, e.g., "Fib 0.5").
+       - Actionable Recommendation.
+
+    8. **Formatting & Language Rules**:
+       - **detailedAnalysis**: Write a **professional technical analysis report (MAXIMUM 600 words)**.
+         - **STRICT PARAGRAPHING**: You MUST separate different topics (Trend, Divergence, Patterns, Conclusion) into distinct paragraphs.
+         - **NO BLANK LINES**: Separate paragraphs using a **SINGLE newline character (\\n)**. Do NOT use double newlines (\\n\\n).
+         - **NO HEADINGS**: Do not use Markdown headings (##) or bullet points. Just flow of text.
+         - **STYLE**: Dense, professional, data-driven.
+         - **MACD RESTRICTION**: Keep the MACD portion short. Devote more space to Trend and Divergence.
+         - **LENGTH CHECK**: Do NOT exceed 600 words. Be concise.
+       - Output fields 'detailedAnalysis', 'recommendation', 'support', 'resistance', and 'description' MUST be in **${targetLang}**.
+       - 'trend'/'signal' remain ENGLISH.
+
+    9. Return the result strictly in JSON.
   `;
 
   // Retry Logic for Stability

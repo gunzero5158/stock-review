@@ -276,13 +276,24 @@ export default function App() {
               </div>
             </div>
 
-            {/* Main Grid */}
+            {/* SECTION 1: Detailed AI Analysis (Now at Top) */}
+            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 shadow-xl shadow-black/20">
+               <div className="flex items-center gap-2 mb-4">
+                 <div className="w-2 h-6 bg-primary-500 rounded-full"></div>
+                 <h3 className="text-lg font-bold text-white">{t('aiInsight')}</h3>
+               </div>
+               <div className="prose prose-invert prose-sm max-w-none text-gray-300">
+                  <p className="leading-relaxed whitespace-pre-wrap">{state.data.detailedAnalysis}</p>
+               </div>
+            </div>
+
+            {/* SECTION 2: Grid for Charts & Indicators */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
-              {/* Left Column: Charts & Score */}
+              {/* Left Column: Charts & Score Summary */}
               <div className="lg:col-span-2 space-y-6">
                 
-                {/* Score Card */}
+                {/* Score Summary (Kept near charts) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 flex flex-col justify-between">
                         <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">{t('techScore')}</h3>
@@ -294,12 +305,10 @@ export default function App() {
                     <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 space-y-4">
                          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">{t('keyLevels')}</h3>
                          <div className="space-y-3">
-                            {/* Resistance (Sell/Pressure) = Green */}
                             <div className="flex justify-between items-center p-3 bg-gray-950 rounded border border-gray-800">
                                <span className="text-green-400 font-medium text-sm">{t('resistance')}</span>
                                <span className="font-mono text-white">{state.data.resistance}</span>
                             </div>
-                            {/* Support (Buy/Safety) = Red */}
                             <div className="flex justify-between items-center p-3 bg-gray-950 rounded border border-gray-800">
                                <span className="text-red-400 font-medium text-sm">{t('support')}</span>
                                <span className="font-mono text-white">{state.data.support}</span>
@@ -319,22 +328,11 @@ export default function App() {
 
               </div>
 
-              {/* Right Column: AI Analysis & Indicators */}
+              {/* Right Column: Indicators */}
               <div className="space-y-6">
                 
-                {/* Detailed Analysis */}
-                <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 shadow-xl shadow-black/20">
-                   <div className="flex items-center gap-2 mb-4">
-                     <div className="w-2 h-6 bg-primary-500 rounded-full"></div>
-                     <h3 className="text-lg font-bold text-white">{t('aiInsight')}</h3>
-                   </div>
-                   <div className="prose prose-invert prose-sm max-w-none text-gray-300">
-                      <p className="leading-relaxed whitespace-pre-wrap">{state.data.detailedAnalysis}</p>
-                   </div>
-                </div>
-
                 {/* Indicator Breakdown */}
-                <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+                <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 h-full">
                   <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">{t('indicators')}</h3>
                   <div className="space-y-3">
                     {state.data.indicators.map((ind, idx) => (
@@ -350,16 +348,20 @@ export default function App() {
                             {t(`signals.${(ind.signal || 'NEUTRAL').toLowerCase()}`)}
                           </span>
                         </div>
-                        {ind.value && <div className="text-xs font-mono text-primary-400 mb-1">{ind.value}</div>}
-                        <p className="text-xs text-gray-500">{ind.description}</p>
+                        {ind.value && (
+                           <div className="text-xs font-mono text-primary-400 mb-1 line-clamp-2 break-all overflow-hidden" title={ind.value}>
+                             {ind.value}
+                           </div>
+                        )}
+                        <p className="text-xs text-gray-500 line-clamp-3">{ind.description}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Sources - removed since search is disabled, but keeping struct just in case */}
+                {/* Sources - optional */}
                 {state.data.sources && state.data.sources.length > 0 && (
-                   <div className="text-xs text-gray-600">
+                   <div className="text-xs text-gray-600 px-4">
                       <p className="uppercase font-bold mb-2">{t('sources')}</p>
                       <ul className="space-y-1">
                         {state.data.sources.slice(0, 3).map((source, i) => (
