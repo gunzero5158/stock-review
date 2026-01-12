@@ -15,7 +15,7 @@ const ANALYSIS_SCHEMA = {
     support: { type: Type.STRING, description: "Identified support price levels" },
     resistance: { type: Type.STRING, description: "Identified resistance price levels" },
     recommendation: { type: Type.STRING, description: "Short term actionable advice" },
-    detailedAnalysis: { type: Type.STRING, description: "Professional technical analysis report (MAXIMUM 600 words). Organized into multiple paragraphs. Separate paragraphs with a SINGLE newline only. No headings." },
+    detailedAnalysis: { type: Type.STRING, description: "Professional technical analysis report (Approx 400-600 words). Organized into multiple paragraphs. Separate paragraphs with a SINGLE newline only. No headings." },
     indicators: {
       type: Type.ARRAY,
       items: {
@@ -98,56 +98,56 @@ export const analyzeStock = async (
   }
 
   const prompt = `
-    Act as a Senior Technical Analyst specialized in Asian and US markets. Perform a CONCISE analysis for: "${query}".
+    Act as a Senior Technical Analyst specialized in Asian and US markets. Perform a DEEP and COMPREHENSIVE analysis for: "${query}".
     ${promptContext}
 
     **Strictly DO NOT** search for news. Rely ONLY on the provided price/indicator data.
 
+    === PHASE 1: INTERNAL COMPREHENSIVE EVALUATION (Evaluate ALL 5 dimensions below) ===
+    You must rigorously analyze these 5 technical areas internally to form a holistic view:
+
     1. **Trend & Structure**:
-       - **Moving Averages**: Analyze Price vs MA5 vs MA20. Identify Bullish Alignment (Long) or Death Cross (Short).
-       - **Timeframe Continuity**: Does the Weekly Chart support the Daily trend?
+       - Moving Averages: Price vs MA5 vs MA20. Check for Golden Cross/Death Cross.
+       - Timeframe Alignment: Does Weekly Trend support Daily Trend?
 
     2. **Divergence Analysis (CRITICAL)**:
-       - **Concept**: Compare Price Highs/Lows vs Indicator Highs/Lows.
-       - **RSI & KDJ Divergence**: Check standard divergence logic. This is the STRONGEST signal.
+       - **Concept**: Detect if Price momentum disagrees with Indicator momentum.
+       - **Execution**: Check RSI, MACD, and KDJ for Top Divergence (Bearish) or Bottom Divergence (Bullish).
 
     3. **Primary Oscillators**:
-       - **MACD (KEEP CONCISE)**: Check Zero Line status and recent Crossovers. **Do not explain how MACD works**. Just state the signal (e.g. "DIF crossed above DEA"). Keep this part brief (max 2 sentences).
-       - **RSI**: Overbought (>70) or Oversold (<30)?
-       - **KDJ**: Golden Cross (Buy) or Dead Cross (Sell).
+       - **MACD**: Histogram trends, Zero Line proximity.
+       - **RSI**: Overbought (>75) / Oversold (<25) zones.
+       - **KDJ**: Check for J-value extremes and crossovers.
 
     4. **Chart Patterns & Morphology**:
-       - **Identify Classic Patterns**: Cup and Handle, Head and Shoulders, Double Top/Bottom, Triangles, Flags.
-       - **Candlestick Math**: Look for long wicks (rejection) or large body candles (conviction) at key levels.
+       - **Classic Patterns**: Triangles, Wedges, Head & Shoulders.
+       - **Elliott Wave**: Identify cycle phase (Impulse 1-3-5 vs Correction A-B-C).
+       - **Chan Lun (缠论)**: Identify "Bi" (Stroke), "Zhong Shu" (Center/Pivot), and "Bei Chi" (Divergence/Exhaustion) structures.
 
     5. **Key Levels**:
-       - **Fibonacci**: Calculate retracement levels (0.382, 0.5, 0.618) from recent swing high/low.
-       - **Bollinger Bands**: Price tagging Upper Band (Strength/Overextended) or Lower Band (Bounce).
-       - **Magic 9**: Check for sequential 9 signals.
+       - Fibonacci Retracements (0.382, 0.5, 0.618).
+       - Bollinger Bands (Upper Band Pressure vs Lower Band Support).
+       - Magic 9: Sequential counts.
 
-    6. **SCORING LOGIC**:
-       - Score 0-5 based on **Risk/Reward for NEW ENTRY**.
-       - **Score 5**: Trend Up + Bullish Divergence + Breakout.
-       - **Score 0**: Trend Down + Bearish Divergence + Breakdown.
-       - **Score 2-3**: High RSI (>80) + Divergence (Risk of pullback).
+    === PHASE 2: SYNTHESIS & OUTPUT GENERATION ===
 
-    7. **Determine**:
-       - Technical Score.
-       - Support/Resistance Levels (with reasoning, e.g., "Fib 0.5").
-       - Actionable Recommendation.
+    6. **SCORING**: Score 0 (Strong Sell) to 5 (Strong Buy) based on the net Risk/Reward ratio derived from Phase 1.
 
-    8. **Formatting & Language Rules**:
-       - **detailedAnalysis**: Write a **professional technical analysis report (MAXIMUM 600 words)**.
-         - **STRICT PARAGRAPHING**: You MUST separate different topics (Trend, Divergence, Patterns, Conclusion) into distinct paragraphs.
-         - **NO BLANK LINES**: Separate paragraphs using a **SINGLE newline character (\\n)**. Do NOT use double newlines (\\n\\n).
-         - **NO HEADINGS**: Do not use Markdown headings (##) or bullet points. Just flow of text.
-         - **STYLE**: Dense, professional, data-driven.
-         - **MACD RESTRICTION**: Keep the MACD portion short. Devote more space to Trend and Divergence.
-         - **LENGTH CHECK**: Do NOT exceed 600 words. Be concise.
-       - Output fields 'detailedAnalysis', 'recommendation', 'support', 'resistance', and 'description' MUST be in **${targetLang}**.
+    7. **detailedAnalysis (CRITICAL)**:
+       - **SYNTHESIS STRATEGY**: Do NOT simply list the 5 areas. **Combine them** into a professional narrative.
+       - **KEY CONCLUSIONS**: Start with the most dominant technical driver (e.g., "A powerful Weekly Trend is clashing with Daily Divergence...").
+       - **COMPREHENSIVENESS**: You must account for all 5 factors in your reasoning, even if you only write about the critical ones.
+       - **LENGTH**: Write a substantial, detailed report (Approx 400-600 words). Do not be concise. Be thorough.
+       - **FORMAT**: Use multiple paragraphs separated by single newlines. No Markdown headers.
+       - **SPECIFICITY**: Explicitly reference Elliott Wave or Chan Lun structures if they clarify the trend.
+
+    8. **recommendation**:
+       - Provide actionable advice that directly results from the comprehensive evaluation (e.g., "Wait for pullback to 50% Fib level due to Overbought RSI").
+
+    9. **Language & Format**:
+       - Output fields 'detailedAnalysis', 'recommendation', 'support', 'resistance', 'description' MUST be in **${targetLang}**.
        - 'trend'/'signal' remain ENGLISH.
-
-    9. Return the result strictly in JSON.
+       - Return strictly JSON.
   `;
 
   // Retry Logic for Stability
