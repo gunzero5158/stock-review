@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { analyzeStock } from './services/geminiService';
+import { analyzeStock, identifyStockName } from './services/geminiService';
 import { fetchStockData } from './services/stockService'; 
 import { AppState, StockDataPoint, Language, LoadingStep } from './types';
 import { GaugeChart } from './components/GaugeChart';
@@ -63,15 +63,29 @@ export default function App() {
       // Step 1: Fetch Data
       const result = await fetchStockData(searchInput, config);
       
-      // Step 2: Simulate Calculation (fast)
-      setState(prev => ({ ...prev, loadingStep: 'CALCULATE_INDICATORS', chartData: result.data }));
-      await new Promise(r => setTimeout(r, 800)); // Visual delay for user to see the step
+      // Step 2: Verify Stock Name (If missing from API)
+      let verifiedName = result.name;
+      if (!verifiedName && result.source === 'REAL') {
+         setState(prev => ({ ...prev, loadingStep: 'IDENTIFY_STOCK', chartData: result.data }));
+         try {
+             verifiedName = await identifyStockName(result.symbol, config);
+         } catch (e) {
+             console.warn("Failed to verify stock name via Gemini:", e);
+             // Fallback to symbol if verification fails
+             verifiedName = result.symbol;
+         }
+      }
 
-      // Step 3: AI Analysis (Search removed, direct to generation)
+      // Step 3: Simulate Calculation (fast)
+      setState(prev => ({ ...prev, loadingStep: 'CALCULATE_INDICATORS', chartData: result.data }));
+      await new Promise(r => setTimeout(r, 600)); // Visual delay for user to see the step
+
+      // Step 4: AI Analysis
       setState(prev => ({ ...prev, loadingStep: 'GENERATING_REPORT' }));
 
       const analysisResult = await analyzeStock(
         result.symbol, 
+        verifiedName, // Use the verified name (API or Gemini)
         language, 
         result.data, 
         config, 
@@ -100,8 +114,16 @@ export default function App() {
      let isActive = currentStep === targetStep;
      
      let statusClass = "text-gray-500 border-gray-700";
-     // Adjusted numbering for steps: 1=fetch, 2=calc, 3=gen (search removed)
-     let stepNum = stepKey === 'gen' ? '3' : stepKey === 'calc' ? '2' : '1'; 
+     
+     // Mapping steps to numbers
+     const stepMap: Record<string, string> = {
+       'fetch': '1',
+       'identify': '2',
+       'calc': '3',
+       'gen': '4'
+     };
+
+     let stepNum = stepMap[stepKey] || '0';
      let icon = <span className="text-xs">{stepNum}</span>;
 
      if (isCompleted) {
@@ -123,6 +145,11 @@ export default function App() {
         </div>
      );
   };
+
+  // Logic to determine completion state for the list
+  const steps = ['FETCH_DATA', 'IDENTIFY_STOCK', 'CALCULATE_INDICATORS', 'GENERATING_REPORT', 'IDLE'];
+  const getCurrentStepIndex = (s: LoadingStep) => steps.indexOf(s);
+  const isStepDone = (target: string) => getCurrentStepIndex(state.loadingStep) > steps.indexOf(target);
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 font-sans selection:bg-primary-500 selection:text-white pb-20">
@@ -224,8 +251,9 @@ export default function App() {
                 </div>
                 <h3 className="text-center text-xl font-bold text-white mb-6">AI Analyst Working...</h3>
                 <div className="space-y-4">
-                   {renderLoadingStep('fetch', state.loadingStep, 'FETCH_DATA', state.loadingStep !== 'FETCH_DATA' && state.loadingStep !== 'IDLE')}
-                   {renderLoadingStep('calc', state.loadingStep, 'CALCULATE_INDICATORS', ['GENERATING_REPORT'].includes(state.loadingStep))}
+                   {renderLoadingStep('fetch', state.loadingStep, 'FETCH_DATA', isStepDone('FETCH_DATA'))}
+                   {renderLoadingStep('identify', state.loadingStep, 'IDENTIFY_STOCK', isStepDone('IDENTIFY_STOCK'))}
+                   {renderLoadingStep('calc', state.loadingStep, 'CALCULATE_INDICATORS', isStepDone('CALCULATE_INDICATORS'))}
                    {renderLoadingStep('gen', state.loadingStep, 'GENERATING_REPORT', false)}
                 </div>
              </div>

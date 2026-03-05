@@ -40,8 +40,60 @@ const getLanguageName = (lang: Language): string => {
   }
 };
 
+/**
+ * Uses Gemini with Google Search tool to identify the official company name
+ * from a stock symbol (e.g., "HK.00700" -> "Tencent Holdings").
+ */
+export const identifyStockName = async (symbol: string, config: AppConfig): Promise<string> => {
+  const clientOptions: any = { apiKey: process.env.API_KEY };
+  if (config.geminiBaseUrl && config.geminiBaseUrl.trim().length > 0) {
+    clientOptions.baseUrl = config.geminiBaseUrl.trim();
+  }
+
+  const ai = new GoogleGenAI(clientOptions);
+  
+  // Use flash model for speed, it supports googleSearch
+  const model = "gemini-3-flash-preview"; 
+
+  // Updated prompt to search Sina Finance or Xueqiu as requested
+  const prompt = `
+    Use Google Search to find the official company name for the stock symbol "${symbol}".
+    
+    IMPORTANT: You MUST search on "Sina Finance" (新浪财经) or "Xueqiu" (雪球) to verify the name, as they are the most accurate sources for this request.
+    
+    Return ONLY the company name (e.g. "Tencent Holdings" or "腾讯控股").
+    If the stock is Chinese/HK, prefer the Chinese name.
+    Do not include the code, ticker, or any introductory text.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: "text/plain"
+      }
+    });
+
+    const text = response.text || "";
+    const cleanName = text.trim().replace(/\n/g, '').replace(/['"]/g, '');
+    
+    // Basic validation: if it's too long, it might be a sentence
+    if (cleanName.length > 50) {
+      return cleanName.split('.')[0]; // Take first sentence if verbose
+    }
+    
+    return cleanName || symbol;
+  } catch (e) {
+    console.warn("Stock identification failed:", e);
+    return symbol; // Fallback to symbol
+  }
+};
+
 export const analyzeStock = async (
     rawQuery: string, 
+    stockName: string | undefined,
     lang: Language, 
     contextData: StockDataPoint[], 
     config: AppConfig,
@@ -49,6 +101,9 @@ export const analyzeStock = async (
   ): Promise<AIAnalysisResult> => {
   
   const query = normalizeSymbol(rawQuery);
+  // Construct a strong identifier if name is available to prevent AI hallucination on symbol code
+  const identifier = stockName ? `${stockName} (${query})` : query;
+  
   const clientOptions: any = { apiKey: process.env.API_KEY };
   
   if (config.geminiBaseUrl && config.geminiBaseUrl.trim().length > 0) {
@@ -82,7 +137,7 @@ export const analyzeStock = async (
     } else {
       promptContext = `
       CONTEXT DATA (Real Market Data via API):
-      Symbol: ${query}
+      Symbol: ${identifier}
       Latest Price: ${latest.close}
       Latest Volume Ratio: ${volumeRatio}x (vs 5-day avg)
       
@@ -98,7 +153,7 @@ export const analyzeStock = async (
   }
 
   const prompt = `
-    Act as a Senior Technical Analyst specialized in Asian and US markets. Perform a DEEP and COMPREHENSIVE analysis for: "${query}".
+    Act as a Senior Technical Analyst specialized in Asian and US markets. Perform a DEEP and COMPREHENSIVE analysis for: "${identifier}".
     ${promptContext}
 
     **Strictly DO NOT** search for news. Rely ONLY on the provided price/indicator data.
@@ -182,8 +237,11 @@ export const analyzeStock = async (
       }
 
       // SANITIZATION
+      // Use verified stockName if available for display
+      const finalSymbol = stockName ? `${stockName} (${query})` : (data.symbol || query);
+
       const sanitizedData = {
-          symbol: data.symbol || query,
+          symbol: finalSymbol,
           price: data.price || "N/A",
           score: typeof data.score === 'number' ? data.score : 2.5,
           trend: ["UP", "DOWN", "SIDEWAYS"].includes(data.trend) ? data.trend : "SIDEWAYS",

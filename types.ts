@@ -79,8 +79,8 @@ export interface AIAnalysisResult {
   sources: { title: string; uri: string }[];
 }
 
-// Removed AI_SEARCH step
-export type LoadingStep = 'IDLE' | 'FETCH_DATA' | 'CALCULATE_INDICATORS' | 'GENERATING_REPORT';
+// Added IDENTIFY_STOCK step
+export type LoadingStep = 'IDLE' | 'FETCH_DATA' | 'IDENTIFY_STOCK' | 'CALCULATE_INDICATORS' | 'GENERATING_REPORT';
 
 export interface AppState {
   loadingStep: LoadingStep; // Replaces simple boolean isLoading

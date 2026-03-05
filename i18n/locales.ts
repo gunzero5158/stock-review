@@ -10,9 +10,10 @@ export const translations: Record<Language, any> = {
     readyTitle: "Ready to Analyze",
     readyDesc: "Enter a stock symbol to generate a comprehensive technical report using AI and real market data.",
     
-    // Loading Steps (Removed Search)
+    // Loading Steps
     steps: {
       fetch: "Connecting to Market Data API...",
+      identify: "Verifying Stock Identity (Gemini Search)...", 
       calc: "Computing KDJ, MACD, RSI & Volume...",
       gen: "AI Technical Analyst: Synthesizing Report...",
     },
@@ -79,6 +80,7 @@ export const translations: Record<Language, any> = {
     // Loading Steps
     steps: {
       fetch: "正在连接行情数据接口...",
+      identify: "正在验证股票身份 (Gemini 搜索)...",
       calc: "正在计算 KDJ, MACD, RSI 及成交量...",
       gen: "AI 技术分析师: 正在撰写深度报告...",
     },
@@ -145,6 +147,7 @@ export const translations: Record<Language, any> = {
     // Loading Steps
     steps: {
       fetch: "市場データAPIに接続中...",
+      identify: "銘柄情報を確認中 (Gemini Search)...",
       calc: "KDJ, MACD, RSIを計算中...",
       gen: "AIテクニカルアナリスト: レポート作成中...",
     },

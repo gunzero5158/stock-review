@@ -3,6 +3,7 @@ import { StockDataPoint, AppConfig } from '../types';
 // This is the Standard Interface your Python/Node bridge needs to return
 interface ApiStockResponse {
   symbol: string;
+  name?: string; // Stock Name from API (e.g. "Tencent")
   source?: string; // "FUTU" or "MOCK_FALLBACK"
   debug_error?: string;
   kline: {
@@ -19,6 +20,7 @@ export interface FetchStockResult {
   data: StockDataPoint[];
   source: 'REAL' | 'MOCK';
   symbol: string;
+  name?: string; // Added verified name
 }
 
 // Helper to auto-fix user input (e.g. "700" -> "HK.00700")
@@ -115,7 +117,8 @@ export const fetchStockData = async (rawSymbol: string, config: AppConfig): Prom
     return {
       data: processRawData(resJson.kline),
       source: 'REAL',
-      symbol: resJson.symbol || symbol
+      symbol: resJson.symbol || symbol,
+      name: resJson.name // Return verified name from API if available
     };
 
   } catch (error: any) {
@@ -140,12 +143,6 @@ const processRawData = (rawParams: any[]): StockDataPoint[] => {
   let prevD = 50;
 
   // Magic 9 variables
-  // Positive = Price < Price[4] (Bearish setup counter, technically leading to Buy signal at 9)
-  // Negative = Price > Price[4] (Bullish setup counter, technically leading to Sell signal at 9)
-  // *Correction for user understanding*:
-  // In TD Sequential:
-  // Green 9 (Sell Setup): Close > Close 4 days ago for 9 consecutive days.
-  // Red 9 (Buy Setup): Close < Close 4 days ago for 9 consecutive days.
   let sellSetupCount = 0; // Price > P[4]
   let buySetupCount = 0;  // Price < P[4]
 
@@ -214,7 +211,6 @@ const processRawData = (rawParams: any[]): StockDataPoint[] => {
     }
 
     // --- Magic 9 (DeMark Setup) ---
-    // Look back 4 indices. rawParams[index - 4]
     if (index >= 4) {
        const close4DaysAgo = rawParams[index - 4].close;
        
@@ -229,9 +225,8 @@ const processRawData = (rawParams: any[]): StockDataPoint[] => {
           sellSetupCount = 0;
        }
 
-       // We record the count. In charts, we will highlight 9.
-       if (sellSetupCount > 0) point.magic9 = -sellSetupCount; // Negative for Sell Setup (Green in TradingView usually, but we use Green for Down)
-       if (buySetupCount > 0) point.magic9 = buySetupCount;   // Positive for Buy Setup (Red usually)
+       if (sellSetupCount > 0) point.magic9 = -sellSetupCount; 
+       if (buySetupCount > 0) point.magic9 = buySetupCount;   
     }
 
     data.push(point);
